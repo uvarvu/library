@@ -1,0 +1,26 @@
+meta {
+  name: Add Book Already Exists
+  type: http
+  seq: 2
+}
+
+put {
+  url: http://localhost:8019/library/add-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241558355",
+    "title": "Fantastic Mr Fox",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 10
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body: eq Book already exists
+}

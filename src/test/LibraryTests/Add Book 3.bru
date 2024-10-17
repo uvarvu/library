@@ -1,0 +1,26 @@
+meta {
+  name: Add Book 3
+  type: http
+  seq: 5
+}
+
+put {
+  url: http://localhost:8019/library/add-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241558485",
+    "title": "Georges Marvellous Medicine",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 10
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: eq Book added
+}

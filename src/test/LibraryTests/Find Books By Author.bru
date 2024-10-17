@@ -1,0 +1,22 @@
+meta {
+  name: Find Books By Author
+  type: http
+  seq: 10
+}
+
+get {
+  url: http://localhost:8019/library/find-books-by-author/Roald Dahl
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("array size test", function(){
+    const bookList = res.getBody();
+    expect(bookList.length).to.equal(2);
+  });
+}

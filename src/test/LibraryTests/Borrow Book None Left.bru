@@ -1,0 +1,24 @@
+meta {
+  name: Borrow Book None Left
+  type: http
+  seq: 14
+}
+
+post {
+  url: http://localhost:8019/library/borrow-book
+  body: text
+  auth: none
+}
+
+body:json {
+  978-0241558355
+}
+
+body:text {
+  978-0241578186
+}
+
+assert {
+  res.status: eq 200
+  res.body: eq Book borrowed successfully
+}

@@ -24,9 +24,11 @@ The API documentation can be found in two places:
 2.  Errors are returned if books cannot be found by ISBN or author.
 3.  Errors are returned if books are borrowed/returned that don't belong to the library
 4.  Errors are returned if someone tries to borrow a book and there are no copies left
+5.  If someone returns a book that isn't from the library but matches one that's offered then it will be accepted!
 
 ## Additional Features
 1.  I decided to implement the Library cache using an enum as more traditional methods such as singleton objects can be defeated using Spring's dependency injection tools.
-2.  The Bruno collection contains test and assertions to ensure the output of the rest API is correct.
+2.  The Bruno collection contains tests and assertions to ensure the output of the rest API is correct.
 3.  I implemented a validation exception handler to handle any cases where book attributes are incorrect.
 4.  I used Spring AOP to add a logging aspect to the rest controller.
+5.  Bucket4j is used for rate limiting.

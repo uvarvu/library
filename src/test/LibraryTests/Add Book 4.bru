@@ -1,0 +1,26 @@
+meta {
+  name: Add Book 4
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:8019/library/add-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0141318202",
+    "title": "Magnus Powermouse",
+    "author": "Dick King Smith",
+    "publicationYear": 2005,
+    "availableCopies": 10
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: eq Book added
+}

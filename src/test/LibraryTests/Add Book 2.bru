@@ -1,0 +1,26 @@
+meta {
+  name: Add Book 2
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:8019/library/add-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241578186",
+    "title": "The Twits",
+    "author": "Roald Dahl",
+    "publicationYear": 2005,
+    "availableCopies": 1
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: eq Book added
+}

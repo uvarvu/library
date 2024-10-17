@@ -1,0 +1,26 @@
+meta {
+  name: Add Book Validation
+  type: http
+  seq: 3
+}
+
+put {
+  url: http://localhost:8019/library/add-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241558355",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 0
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.title: eq The title must not be blank
+  res.body.availableCopies: eq There must be one or more available copies
+}

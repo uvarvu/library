@@ -1,0 +1,26 @@
+meta {
+  name: Remove Book Doesn't Exist
+  type: http
+  seq: 9
+}
+
+delete {
+  url: http://localhost:8019/library/remove-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-02415583556",
+    "title": "Fantastic Mr Fox",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 10
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body: eq Book does not exist
+}

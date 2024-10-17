@@ -1,0 +1,30 @@
+meta {
+  name: Return Book Not Exist
+  type: http
+  seq: 17
+}
+
+post {
+  url: http://localhost:8019/library/return-book
+  body: text
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241558355",
+    "title": "Fantastic Mr Fox",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 10
+  }
+}
+
+body:text {
+  978-0141318203
+}
+
+assert {
+  res.status: eq 404
+  res.body: eq Book does not belong to this library
+}

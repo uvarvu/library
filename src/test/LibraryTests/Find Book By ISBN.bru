@@ -1,0 +1,16 @@
+meta {
+  name: Find Book By ISBN
+  type: http
+  seq: 7
+}
+
+get {
+  url: http://localhost:8019/library/find-book-by-isbn/978-0241578186
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.title: eq The Twits
+}

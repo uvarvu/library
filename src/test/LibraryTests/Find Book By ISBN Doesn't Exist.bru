@@ -1,0 +1,15 @@
+meta {
+  name: Find Book By ISBN Doesn't Exist
+  type: http
+  seq: 11
+}
+
+get {
+  url: http://localhost:8019/library/find-book-by-isbn/978-0241558357
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

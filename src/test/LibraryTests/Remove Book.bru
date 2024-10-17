@@ -1,0 +1,26 @@
+meta {
+  name: Remove Book
+  type: http
+  seq: 8
+}
+
+delete {
+  url: http://localhost:8019/library/remove-book
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "isbn": "978-0241558355",
+    "title": "Fantastic Mr Fox",
+    "author": "Roald Dahl",
+    "publicationYear": 2022,
+    "availableCopies": 10
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: eq Book removed
+}
