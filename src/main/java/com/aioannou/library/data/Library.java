@@ -3,9 +3,8 @@ package com.aioannou.library.data;
 import com.aioannou.library.exception.LibraryErrors;
 import com.aioannou.library.exception.LibraryException;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Thread Safe library data store.
@@ -98,5 +97,5 @@ public enum Library {
         bookdb.put(isbn, book);
     }
 
-    private final Map<String, Book> bookdb = new HashMap<>();
+    private final ConcurrentHashMap<String, Book> bookdb = new ConcurrentHashMap<>();
 }

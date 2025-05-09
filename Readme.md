@@ -11,6 +11,7 @@ These commands can be used to build the application and start it:
 1. `npm install -g @usebruno/cli` to install the Bruno CLI
 2. `bru run` from `src/test/LibraryTests` to run the test cases
 3. If you want to view the test cases themselves then you can find Bruno at https://www.usebruno.com and then use it to open the collection in `src/test`.
+4. If you want to test the rate limiter then repeatedly sending requests from Bruno in a short period should trigger it.
 
 ## Documentation
 
