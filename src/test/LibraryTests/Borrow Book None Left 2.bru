@@ -6,16 +6,14 @@ meta {
 
 post {
   url: http://localhost:8019/library/borrow-book
-  body: text
+  body: json
   auth: none
 }
 
 body:json {
-  978-0241558355
-}
-
-body:text {
-  978-0241578186
+  {
+    "isbn": "978-0241578186"
+  }
 }
 
 assert {

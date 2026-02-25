@@ -6,22 +6,14 @@ meta {
 
 post {
   url: http://localhost:8019/library/return-book
-  body: text
+  body: json
   auth: none
 }
 
 body:json {
   {
-    "isbn": "978-0241558355",
-    "title": "Fantastic Mr Fox",
-    "author": "Roald Dahl",
-    "publicationYear": 2022,
-    "availableCopies": 10
+    "isbn": "978-0141318203"
   }
-}
-
-body:text {
-  978-0141318203
 }
 
 assert {
