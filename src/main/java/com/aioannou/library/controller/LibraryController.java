@@ -2,40 +2,31 @@ package com.aioannou.library.controller;
 
 import com.aioannou.library.data.Book;
 import com.aioannou.library.data.BookRequest;
+import com.aioannou.library.data.IsbnRequest;
+import com.aioannou.library.exception.LibraryException;
 import com.aioannou.library.service.LibraryService;
 import io.github.bucket4j.Bucket;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.List;
-
-import lombok.RequiredArgsConstructor;
 
 /**
  * A REST service for managing a library of books.
  */
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/library")
 public class LibraryController {
 
-    @Autowired
-    private LibraryService libraryService;
-
+    private final LibraryService libraryService;
     private final Bucket bucket;
 
-    /**
-     * Constructor that sets up the rate limit.   20 API calls to start with, ten tokens replenish every five seconds.
-     */
-    public LibraryController(){
-        this.bucket = Bucket.builder()
-            .addLimit(limit -> limit.capacity(20).refillGreedy(10, Duration.ofSeconds(5)))
-            .build();
+    public LibraryController(final LibraryService libraryService, final Bucket bucket) {
+        this.libraryService = libraryService;
+        this.bucket = bucket;
     }
 
     /**
@@ -43,10 +34,10 @@ public class LibraryController {
      * @param bookRequest The book to be added
      */
     @PutMapping(value = "/add-book")
-    @ResponseBody
-    public ResponseEntity<String> addBook(@RequestBody @Valid final BookRequest bookRequest) {
-        if(bucket.tryConsume(1)){
-            return libraryService.addBook(bookRequest);
+    public ResponseEntity<String> addBook(@RequestBody @Valid final BookRequest bookRequest) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            libraryService.addBook(bookRequest);
+            return ResponseEntity.ok("Book added");
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
@@ -56,10 +47,10 @@ public class LibraryController {
      * @param bookRequest The book to be removed
      */
     @DeleteMapping(value = "/remove-book")
-    @ResponseBody
-    public ResponseEntity<String> removeBook(@RequestBody @Valid final BookRequest bookRequest) {
-        if(bucket.tryConsume(1)){
-            return libraryService.removeBook(bookRequest);
+    public ResponseEntity<String> removeBook(@RequestBody @Valid final BookRequest bookRequest) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            libraryService.removeBook(bookRequest);
+            return ResponseEntity.ok("Book removed");
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
@@ -70,10 +61,9 @@ public class LibraryController {
      * @return @{@link Book} the book to be returned
      */
     @GetMapping(path="/find-book-by-isbn/{isbn}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<Book> findBookByISBN(@PathVariable("isbn") final String isbn) {
-        if(bucket.tryConsume(1)){
-            return libraryService.findBookByISBN(isbn);
+    public ResponseEntity<Book> findBookByISBN(@PathVariable("isbn") final String isbn) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            return ResponseEntity.ok(libraryService.findBookByISBN(isbn));
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
@@ -84,10 +74,9 @@ public class LibraryController {
      * @return @{@link List<Book>} the list of books that were found
      */
     @GetMapping(path="/find-books-by-author/{author}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<List<Book>> findBooksByAuthor(@PathVariable("author") final String author) {
-        if(bucket.tryConsume(1)){
-            return libraryService.findBooksByAuthor(author);
+    public ResponseEntity<List<Book>> findBooksByAuthor(@PathVariable("author") final String author) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            return ResponseEntity.ok(libraryService.findBooksByAuthor(author));
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
@@ -97,10 +86,10 @@ public class LibraryController {
      * @param isbn The ISBN of the book to be borrowed
      */
     @PostMapping(value = "/borrow-book")
-    @ResponseBody
-    public ResponseEntity<String> deleteBook( @RequestBody String isbn) {
-        if(bucket.tryConsume(1)){
-            return libraryService.borrowBook(isbn);
+    public ResponseEntity<String> borrowBook(@RequestBody @Valid final IsbnRequest isbn) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            libraryService.borrowBook(isbn.isbn());
+            return ResponseEntity.ok("Book borrowed successfully");
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }
@@ -110,10 +99,10 @@ public class LibraryController {
      * @param isbn the ISBN of the book to be returned
      */
     @PostMapping(value = "/return-book")
-    @ResponseBody
-    public ResponseEntity<String> returnBook( @RequestBody String isbn) {
-        if(bucket.tryConsume(1)){
-            return libraryService.returnBook(isbn);
+    public ResponseEntity<String> returnBook(@RequestBody @Valid final IsbnRequest isbn) throws LibraryException {
+        if (bucket.tryConsume(1)) {
+            libraryService.returnBook(isbn.isbn());
+            return ResponseEntity.ok("Book returned successfully");
         }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
     }

@@ -2,26 +2,28 @@ package com.aioannou.library.data;
 
 import com.aioannou.library.exception.LibraryErrors;
 import com.aioannou.library.exception.LibraryException;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Thread Safe library data store.
  */
-public enum Library {
-    INSTANCE;
+@Component
+public class Library {
 
     /**
      * Add a book to the library.
      * @param book The book to add
      * @throws LibraryException if the book already exists
      */
-    public synchronized void addBook(final Book book) throws LibraryException{
-        if(bookdb.containsKey(book.getIsbn())){
+    public void addBook(final Book book) throws LibraryException {
+        if (bookdb.putIfAbsent(book.isbn(), book) != null) {
             throw new LibraryException(LibraryErrors.BOOK_ALREADY_EXISTS);
         }
-        bookdb.put(book.getIsbn(), book);
     }
 
     /**
@@ -29,11 +31,10 @@ public enum Library {
      * @param book The book to remove
      * @throws LibraryException if the book does not exist
      */
-    public synchronized void removeBook(final Book book) throws LibraryException{
-        if(!bookdb.containsKey(book.getIsbn())){
+    public void removeBook(final Book book) throws LibraryException {
+        if (bookdb.remove(book.isbn()) == null) {
             throw new LibraryException(LibraryErrors.BOOK_DOES_NOT_EXIST);
         }
-        bookdb.remove(book.getIsbn());
     }
 
     /**
@@ -42,11 +43,12 @@ public enum Library {
      * @return @{@link Book} the book to return
      * @throws LibraryException if the book does not exist
      */
-    public synchronized Book findBookByISBN(final String isbn) throws LibraryException{
-        if(!bookdb.containsKey(isbn)){
+    public Book findBookByISBN(final String isbn) throws LibraryException {
+        final Book book = bookdb.get(isbn);
+        if (book == null) {
             throw new LibraryException(LibraryErrors.BOOK_DOES_NOT_EXIST);
         }
-        return bookdb.get(isbn);
+        return book;
     }
 
     /**
@@ -55,12 +57,12 @@ public enum Library {
      * @return @List<{@link Book}> The list of books to return
      * @throws LibraryException if no books can be found
      */
-    public synchronized List<Book> findBooksByAuthor(final String author) throws LibraryException{
-        List<Book> books = bookdb.values().stream()
-            .filter(book -> book.getAuthor().equals(author))
+    public List<Book> findBooksByAuthor(final String author) throws LibraryException {
+        final List<Book> books = bookdb.values().stream()
+            .filter(book -> book.author().equals(author))
             .toList();
 
-        if(books.isEmpty()){
+        if (books.isEmpty()) {
             throw new LibraryException(LibraryErrors.AUTHOR_UNKNOWN);
         }
         return books;
@@ -71,16 +73,23 @@ public enum Library {
      * @param isbn The ISBN of the book to borrow
      * @throws LibraryException if the book doesn't exist or there are no more copies available.
      */
-    public synchronized void borrowBook(final String isbn) throws LibraryException{
-        if(!bookdb.containsKey(isbn)){
-            throw new LibraryException(LibraryErrors.BOOK_DOES_NOT_EXIST);
+    public void borrowBook(final String isbn) throws LibraryException {
+        final AtomicReference<LibraryErrors> error = new AtomicReference<>();
+        bookdb.compute(isbn, (key, book) -> {
+            if (book == null) {
+                error.set(LibraryErrors.BOOK_DOES_NOT_EXIST);
+                return null;
+            }
+            if (book.availableCopies() == 0) {
+                error.set(LibraryErrors.BOOK_LOANED_OUT);
+                return book;
+            }
+            return new Book(book.isbn(), book.title(), book.author(), book.publicationYear(), book.availableCopies() - 1);
+        });
+
+        if (error.get() != null) {
+            throw new LibraryException(error.get());
         }
-        Book book = bookdb.get(isbn);
-        if (book.getAvailableCopies() == 0){
-            throw new LibraryException(LibraryErrors.BOOK_LOANED_OUT);
-        }
-        book.setAvailableCopies(book.getAvailableCopies() - 1);
-        bookdb.put(isbn, book);
     }
 
     /**
@@ -88,14 +97,24 @@ public enum Library {
      * @param isbn The ISBN of the book to return;
      * @throws LibraryException if the book doesn't belong in the library
      */
-    public synchronized void returnBook(final String isbn) throws LibraryException{
-        if(!bookdb.containsKey(isbn)){
-            throw new LibraryException(LibraryErrors.BOOK_UNKNOWN);
+    public void returnBook(final String isbn) throws LibraryException {
+        final AtomicReference<LibraryErrors> error = new AtomicReference<>();
+        bookdb.compute(isbn, (key, book) -> {
+            if (book == null) {
+                error.set(LibraryErrors.BOOK_UNKNOWN);
+                return null;
+            }
+            return new Book(book.isbn(), book.title(), book.author(), book.publicationYear(), book.availableCopies() + 1);
+        });
+
+        if (error.get() != null) {
+            throw new LibraryException(error.get());
         }
-        Book book = bookdb.get(isbn);
-        book.setAvailableCopies(book.getAvailableCopies() + 1);
-        bookdb.put(isbn, book);
     }
 
-    private final ConcurrentHashMap<String, Book> bookdb = new ConcurrentHashMap<>();
+    public void clear() {
+        bookdb.clear();
+    }
+
+    private final ConcurrentMap<String, Book> bookdb = new ConcurrentHashMap<>();
 }

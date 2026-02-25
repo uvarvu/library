@@ -5,17 +5,18 @@ package com.aioannou.library.exception;
  */
 public class LibraryException extends Exception {
 
-    private int errorCode;
+    private final LibraryErrors libraryError;
 
-    public LibraryException(){
-        // Default Constructor;
-    }
-    public LibraryException (final LibraryErrors libraryError){
+    public LibraryException(final LibraryErrors libraryError){
         super(libraryError.getErrorMessage());
-        this.errorCode = libraryError.getErrorCode();
+        this.libraryError = libraryError;
     }
 
     public int getErrorCode(){
-        return errorCode;
+        return libraryError.getErrorCode();
+    }
+
+    public LibraryErrors getLibraryError() {
+        return libraryError;
     }
 }

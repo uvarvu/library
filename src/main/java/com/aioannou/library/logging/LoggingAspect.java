@@ -1,18 +1,17 @@
 package com.aioannou.library.logging;
 
 import com.aioannou.library.data.BookRequest;
+import com.aioannou.library.data.IsbnRequest;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.After;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Logging for incoming requests
@@ -21,22 +20,23 @@ import java.time.format.DateTimeFormatter;
 @Component
 public class LoggingAspect {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingAspect.class);
+
     @Before("execution(* com.aioannou.library.controller.*.*(..))")
-    public void logBefore(JoinPoint joinPoint){
-        String parameters = getArgs(joinPoint.getArgs());
-        System.out.println(getDate() + " Entering method: " + joinPoint.getSignature().getName() + " with arguments " + parameters);
+    public void logBefore(final JoinPoint joinPoint){
+        final String parameters = getArgs(joinPoint.getArgs());
+        LOGGER.info("Entering method: {} with arguments {}", joinPoint.getSignature().getName(), parameters);
     }
 
     @After("execution(* com.aioannou.library.controller.*.*(..))")
-    public void logAfter(JoinPoint joinPoint){
-        System.out.println(getDate() + " Exiting method: " + joinPoint.getSignature().getName());
+    public void logAfter(final JoinPoint joinPoint){
+        LOGGER.info("Exiting method: {}", joinPoint.getSignature().getName());
     }
 
     @AfterReturning(pointcut = "execution(* com.aioannou.library.controller.*.*(..))", returning = "entity")
-    public void logOverload(JoinPoint joinPoint, Object entity) {
-        ResponseEntity response = (ResponseEntity) entity;
-        if (response.getStatusCode().equals(HttpStatus.TOO_MANY_REQUESTS)){
-            System.out.println(getDate() + " Method: " + joinPoint.getSignature().getName() + " reported overload");
+    public void logOverload(final JoinPoint joinPoint, final Object entity) {
+        if (entity instanceof ResponseEntity<?> response && response.getStatusCode().equals(HttpStatus.TOO_MANY_REQUESTS)) {
+            LOGGER.warn("Method: {} reported overload", joinPoint.getSignature().getName());
         }
     }
 
@@ -44,24 +44,19 @@ public class LoggingAspect {
      * Get a list of incoming parameters
      * @return List of parameters
      */
-    private String getArgs(final Object[] arguments){
-        StringBuilder argumentsList = new StringBuilder();
-        for (Object argument: arguments){
-            if (argument instanceof String){
-                argumentsList.append((String) argument).append(" ");
+    private String getArgs(final Object[] arguments) {
+        final StringBuilder argumentsList = new StringBuilder();
+        for (Object argument: arguments) {
+            if (argument instanceof String value) {
+                argumentsList.append(value).append(" ");
             }
-            else if(argument instanceof BookRequest){
-                argumentsList.append(((BookRequest) argument).getIsbn()).append(" ");
+            else if (argument instanceof BookRequest request) {
+                argumentsList.append(request.isbn()).append(" ");
+            }
+            else if (argument instanceof IsbnRequest request) {
+                argumentsList.append(request.isbn()).append(" ");
             }
         }
         return argumentsList.toString();
-    }
-
-    /**
-     * Get a formatted date for logging
-     * @return formatted date
-     */
-    private String getDate(){
-        return ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT);
     }
 }

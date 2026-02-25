@@ -1,5 +1,9 @@
 # Book Library REST project
 
+## Prerequisites
+1. Java 21 (or newer)
+2. Maven 3.9+ recommended
+
 ## Building and Running:
 
 These commands can be used to build the application and start it:
@@ -19,6 +23,10 @@ The API documentation can be found in two places:
 
 1. `http://localhost:8019/v3/api-docs` for the Open API documentation
 2. `http://localhost:8019/swagger-ui/index.html` for Swagger
+
+## API Notes
+1. `POST /library/borrow-book` expects JSON: `{"isbn":"..."}`.
+2. `POST /library/return-book` expects JSON: `{"isbn":"..."}`.
 
 ## Assumptions
 1.  Users cannot upload the same book twice, an error is returned for this scenario.
