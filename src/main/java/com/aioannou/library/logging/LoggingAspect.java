@@ -46,15 +46,16 @@ public class LoggingAspect {
      */
     private String getArgs(final Object[] arguments) {
         final StringBuilder argumentsList = new StringBuilder();
-        for (Object argument: arguments) {
-            if (argument instanceof String value) {
+        for (Object argument : arguments) {
+            // Record patterns retain the ISBN and explicitly ignore unused fields.
+            final String value = switch (argument) {
+                case String text -> text;
+                case BookRequest(var isbn, _, _, _, _) -> isbn;
+                case IsbnRequest(var isbn) -> isbn;
+                case null, default -> null;
+            };
+            if (value != null) {
                 argumentsList.append(value).append(" ");
-            }
-            else if (argument instanceof BookRequest request) {
-                argumentsList.append(request.isbn()).append(" ");
-            }
-            else if (argument instanceof IsbnRequest request) {
-                argumentsList.append(request.isbn()).append(" ");
             }
         }
         return argumentsList.toString();

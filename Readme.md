@@ -1,6 +1,6 @@
 # Book library singleton example
 
-A small Java 21 / Spring Boot 4 REST application demonstrating a thread-safe,
+A small Java 27 / Spring Boot 4 REST application demonstrating a thread-safe,
 in-memory singleton. It uses immutable records, constructor injection, Jakarta
 Validation, OpenAPI documentation, AOP request logging, and Bucket4j rate limiting.
 
@@ -26,7 +26,7 @@ an outstanding loan.
 
 ## Build and run
 
-Install a JDK 21 or newer and set `JAVA_HOME` if needed. The Maven wrapper downloads
+Install a JDK 27 or newer and set `JAVA_HOME` if needed. The Maven wrapper downloads
 Maven 3.9.11 on its first run; a separate Maven installation is unnecessary.
 
 ```sh
@@ -81,10 +81,51 @@ and exhausted copies return 409. The shared application-wide rate limiter return
 `library.rate-limit.refill-tokens`, and `library.rate-limit.refill-seconds` in
 `application.properties` or through Spring Boot environment variables.
 
+## Java modernization (21 → 27)
+
+The compiler release, minimum build JDK, and CI JDK are now **27**. No preview
+features or `--enable-preview` flags are required. Java 27 is the latest stable
+release as of October 2026; Java 25 is the latest LTS release.
+
+Features applied to this example:
+
+- **Java 22 unnamed variables and patterns:** map updates use `(_, book)` because
+  the key is unused. Request logging extracts ISBNs with record patterns such as
+  `BookRequest(var isbn, _, _, _, _)`, explicitly ignoring the remaining fields.
+  Record patterns and pattern switches were finalized in Java 21; discarding
+  components with `_` became permanent in Java 22.
+- **Java 25 flexible constructor bodies:** `LibraryException` checks its error
+  argument for null before calling `super(...)`, producing a clear diagnostic.
+- **Virtual-thread HTTP execution:** `spring.threads.virtual.enabled=true` enables
+  virtual threads in the embedded server. Virtual threads were finalized in
+  Java 21; Java 24 removed pinning caused by ordinary synchronized blocks and
+  methods. A real HTTP test verifies that requests execute on virtual threads.
+  This is a concurrency example, not a claim of faster in-memory operations.
+- **Test instrumentation:** Surefire loads Mockito as a startup Java agent,
+  following Mockito's guidance for modern JDKs rather than relying on dynamic
+  self-attachment.
+
+Other finalized additions, including Java 25 scoped values and module imports,
+and Java 24 stream gatherers, do not simplify this small application's current
+operations. Compact source files and instance main methods are unnecessary for
+its Spring Boot entry point. Structured concurrency and primitive patterns are
+still preview features in Java 27, so they are not enabled.
+
+Spring Boot 4.1.1's published compatibility range currently ends at Java 26.
+This project targets Java 27 and verifies its own tests and packaged application
+on that JDK; those checks do not extend the framework's official support range.
+The Java 27 baseline is intentional for this learning example and is not an LTS
+baseline. Dependencies remain on stable releases.
+
+References: [Java 27 downloads](https://www.oracle.com/java/technologies/downloads/),
+[language changes](https://docs.oracle.com/en/java/javase/27/language/java-language-changes-summary.html),
+[virtual thread pinning improvements](https://openjdk.org/jeps/491),
+[Spring Boot requirements](https://docs.spring.io/spring-boot/system-requirements.html).
+
 ## Tests
 
 `./mvnw verify` runs independent JUnit tests, including concurrent add/borrow/return
-operations using Java 21 virtual threads, singleton identity, request validation,
+operations using virtual threads, singleton identity, request validation,
 rate limiting, and OpenAPI generation. HTTP tests reset both library and bucket
 state between cases.
 

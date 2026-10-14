@@ -81,7 +81,7 @@ public final class Library {
      */
     public void borrowBook(final String isbn) throws LibraryException {
         final AtomicReference<LibraryErrors> error = new AtomicReference<>();
-        booksByIsbn.compute(isbn, (key, book) -> {
+        booksByIsbn.compute(isbn, (_, book) -> {
             if (book == null) {
                 error.set(LibraryErrors.BOOK_DOES_NOT_EXIST);
                 return null;
@@ -105,7 +105,7 @@ public final class Library {
      */
     public void returnBook(final String isbn) throws LibraryException {
         final AtomicReference<LibraryErrors> error = new AtomicReference<>();
-        booksByIsbn.compute(isbn, (key, book) -> {
+        booksByIsbn.compute(isbn, (_, book) -> {
             if (book == null) {
                 error.set(LibraryErrors.BOOK_UNKNOWN);
                 return null;
