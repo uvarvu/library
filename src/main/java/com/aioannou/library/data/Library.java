@@ -4,16 +4,21 @@ import com.aioannou.library.exception.LibraryErrors;
 import com.aioannou.library.exception.LibraryException;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Thread Safe library data store.
+ * Thread-safe, in-memory data store. Spring creates one instance per application
+ * context (the default singleton scope) and injects it into LibraryService.
+ * Immutable books and atomic map operations protect concurrent updates.
  */
 @Component
-public class Library {
+public final class Library {
+
+    private final ConcurrentMap<String, Book> booksByIsbn = new ConcurrentHashMap<>();
 
     /**
      * Add a book to the library.
@@ -21,7 +26,7 @@ public class Library {
      * @throws LibraryException if the book already exists
      */
     public void addBook(final Book book) throws LibraryException {
-        if (bookdb.putIfAbsent(book.isbn(), book) != null) {
+        if (booksByIsbn.putIfAbsent(book.isbn(), book) != null) {
             throw new LibraryException(LibraryErrors.BOOK_ALREADY_EXISTS);
         }
     }
@@ -32,7 +37,7 @@ public class Library {
      * @throws LibraryException if the book does not exist
      */
     public void removeBook(final Book book) throws LibraryException {
-        if (bookdb.remove(book.isbn()) == null) {
+        if (booksByIsbn.remove(book.isbn()) == null) {
             throw new LibraryException(LibraryErrors.BOOK_DOES_NOT_EXIST);
         }
     }
@@ -40,11 +45,11 @@ public class Library {
     /**
      * Search for a book in the library.
      * @param isbn The ISBN of the book to find
-     * @return @{@link Book} the book to return
+     * @return the matching book
      * @throws LibraryException if the book does not exist
      */
     public Book findBookByISBN(final String isbn) throws LibraryException {
-        final Book book = bookdb.get(isbn);
+        final Book book = booksByIsbn.get(isbn);
         if (book == null) {
             throw new LibraryException(LibraryErrors.BOOK_DOES_NOT_EXIST);
         }
@@ -54,12 +59,13 @@ public class Library {
     /**
      * Search for a list of books given the author.
      * @param author The author to search for
-     * @return @List<{@link Book}> The list of books to return
+     * @return matching books sorted by ISBN
      * @throws LibraryException if no books can be found
      */
     public List<Book> findBooksByAuthor(final String author) throws LibraryException {
-        final List<Book> books = bookdb.values().stream()
+        final List<Book> books = booksByIsbn.values().stream()
             .filter(book -> book.author().equals(author))
+            .sorted(Comparator.comparing(Book::isbn))
             .toList();
 
         if (books.isEmpty()) {
@@ -75,7 +81,7 @@ public class Library {
      */
     public void borrowBook(final String isbn) throws LibraryException {
         final AtomicReference<LibraryErrors> error = new AtomicReference<>();
-        bookdb.compute(isbn, (key, book) -> {
+        booksByIsbn.compute(isbn, (key, book) -> {
             if (book == null) {
                 error.set(LibraryErrors.BOOK_DOES_NOT_EXIST);
                 return null;
@@ -99,7 +105,7 @@ public class Library {
      */
     public void returnBook(final String isbn) throws LibraryException {
         final AtomicReference<LibraryErrors> error = new AtomicReference<>();
-        bookdb.compute(isbn, (key, book) -> {
+        booksByIsbn.compute(isbn, (key, book) -> {
             if (book == null) {
                 error.set(LibraryErrors.BOOK_UNKNOWN);
                 return null;
@@ -112,9 +118,8 @@ public class Library {
         }
     }
 
+    /** Clears the store. This is not a transaction with concurrent operations. */
     public void clear() {
-        bookdb.clear();
+        booksByIsbn.clear();
     }
-
-    private final ConcurrentMap<String, Book> bookdb = new ConcurrentHashMap<>();
 }

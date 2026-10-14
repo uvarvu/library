@@ -13,7 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.Objects;
+import io.github.bucket4j.Bucket;
+import org.springframework.context.ApplicationContext;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "library.rate-limit.refill-seconds=3600")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LibraryControllerIntegrationTest {
 
@@ -30,6 +33,12 @@ class LibraryControllerIntegrationTest {
 
     @Autowired
     private Library library;
+
+    @Autowired
+    private Bucket bucket;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     @Autowired
     private WebApplicationContext webApplicationContext;
@@ -41,6 +50,7 @@ class LibraryControllerIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        bucket.reset();
         library.clear();
         library.addBook(new Book("978-0000000001", "Existing Book", "Test Author", 2023, 2));
     }
@@ -58,7 +68,7 @@ class LibraryControllerIntegrationTest {
             """;
 
         mockMvc.perform(put("/library/add-book")
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
             .andExpect(status().isOk())
             .andExpect(content().string("Book added"));
@@ -79,8 +89,8 @@ class LibraryControllerIntegrationTest {
             """;
 
         mockMvc.perform(post("/library/borrow-book")
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(Objects.requireNonNull(isbnBody)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(isbnBody))
             .andExpect(status().isOk())
             .andExpect(content().string("Book borrowed successfully"));
 
@@ -89,8 +99,8 @@ class LibraryControllerIntegrationTest {
             .andExpect(jsonPath("$.availableCopies").value(1));
 
         mockMvc.perform(post("/library/return-book")
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(Objects.requireNonNull(isbnBody)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(isbnBody))
             .andExpect(status().isOk())
             .andExpect(content().string("Book returned successfully"));
 
@@ -108,7 +118,7 @@ class LibraryControllerIntegrationTest {
             """;
 
         mockMvc.perform(post("/library/borrow-book")
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidBody))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.isbn").value("The ISBN must not be blank"));
@@ -119,6 +129,42 @@ class LibraryControllerIntegrationTest {
         mockMvc.perform(get("/library/find-book-by-isbn/{isbn}", "978-9999999999"))
             .andExpect(status().isNotFound())
             .andExpect(content().string("This book does not exist in the database"));
+    }
+
+    @Test
+    void libraryIsSingletonWithinApplicationContext() {
+        assertSame(library, applicationContext.getBean(Library.class));
+        assertSame(library, applicationContext.getBean("library"));
+    }
+
+    @Test
+    void exhaustedRateLimitRejectsRequestWithoutBorrowingBook() throws Exception {
+        bucket.tryConsume(bucket.getAvailableTokens());
+        mockMvc.perform(post("/library/borrow-book")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"isbn\":\"978-0000000001\"}"))
+            .andExpect(status().isTooManyRequests());
+        org.junit.jupiter.api.Assertions.assertEquals(2,
+            library.findBookByISBN("978-0000000001").availableCopies());
+    }
+
+    @Test
+    void futurePublicationYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(put("/library/add-book")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"isbn":"future", "title":"Future", "author":"Author",
+                     "publicationYear":%d, "availableCopies":1}
+                    """.formatted(java.time.Year.now().getValue() + 1)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.publicationYearValid").value("The year must be valid"));
+    }
+
+    @Test
+    void openApiDocumentationIsAvailable() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/library/borrow-book']").exists());
     }
 
 }
